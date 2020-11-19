@@ -11,10 +11,37 @@ const saveTrans = (item) => {
     store.add(item);
   }
 
+  function checkDb() {
+    const transaction = db.transaction(["pendTrans"], "readwrite");
+    const store = transaction.objectStore("pendTrans");
+    // save current db data to grabDb variable
+    const grabDb = store.getAll();
+  
+    grabDb.onsuccess = () => {
+      if (grabDb.result.length > 0) {
+        fetch("/api/transaction/bulk", {
+          method: "POST",
+          body: JSON.stringify(grabDb.result),
+          headers: {
+            Accept: "application/json, text/plain, */*",
+            "Content-Type": "application/json"
+          }
+        })
+        .then(response => response.json())
+        .then(() => {
+       
+          const transaction = db.transaction(["pendTrans"], "readwrite");        
+          const store = transaction.objectStore("pendTrans");
+          store.clear();
+        });
+      }
+    };
+  }
+
 
 request.onupgradeneeded = (e) => {
     const db = e.target.result;
-    db.createObjectStore("pendTrans", { autoIncrement: ture});
+    db.createObjectStore("pendTrans", { autoIncrement: true});
 };
 
 request.onsuccess = (e) => {
@@ -27,3 +54,5 @@ request.onsuccess = (e) => {
 request.onerror = (e) => {
     console.log(e.target.errorCode);
 };
+
+window.addEventListener("online", checkDb);
